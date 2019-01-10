@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "sourceMap": true,
+        "target": "es6",
+        "declaration": true,
+        "baseUrl": ".",
+        "moduleResolution": "node",
+        "strictNullChecks": true,
+        "strict": true
+    },
+    "include": [
+        "src/**/*"
+    ]
+}

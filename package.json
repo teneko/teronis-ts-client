@@ -1,0 +1,60 @@
+{
+  "name": "@teronis/ts-client",
+  "version": "0.2.2",
+  "description": "Abstract classes for clients.",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/teronis-ts-client.js",
+  "source": "src/index.ts",
+  "types": "dist/teronis-ts-client.d.ts",
+  "scripts": {
+    "prepublish": "npm run build",
+    "build": "webpack || true",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/teroneko/teronis-ts-client.git"
+  },
+  "keywords": [
+    "teronis",
+    "client",
+    "request"
+  ],
+  "author": "teroneko",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/teroneko/teronis-ts-client/issues"
+  },
+  "homepage": "https://github.com/teroneko/teronis-ts-client#readme",
+  "devDependencies": {
+    "@babel/core": "^7.2.2",
+    "@babel/preset-env": "^7.2.3",
+    "@babel/preset-typescript": "^7.1.0",
+    "@teronis/ts-definitions": "^0.4.0",
+    "@teronis/webpack-dts-bundle": "^1.0.2-teronified",
+    "awesome-typescript-loader": "^5.2.1",
+    "babel-loader": "^8.0.5",
+    "chai": "^4.2.0",
+    "jsdom": "^12.2.0",
+    "jsdom-global": "^3.0.2",
+    "mocha": "^5.2.0",
+    "source-map-loader": "^0.2.4",
+    "ts-node": "^7.0.1",
+    "tsconfig-paths-webpack-plugin": "^3.2.0",
+    "typescript": "^3.2.2",
+    "uri-js": "^4.2.2",
+    "webpack": "^4.28.4",
+    "webpack-cli": "^3.2.1",
+    "webpack-node-externals": "^1.7.2",
+    "xmlhttprequest-ts": "^1.0.1"
+  },
+  "dependencies": {
+    "@teronis/ts-core": "~0.4.0",
+    "jquery": "^3.3.1",
+    "lodash": "^4.17.11",
+    "sweetalert2": "^7.33.1"
+  }
+}
