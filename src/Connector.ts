@@ -19,6 +19,8 @@ export class Connector<
     private _nextFn: NextFunction;
 
     public constructor(prevFn: PrevFunction, nextFn: NextFunction) {
+        this.getStubPromise = this.getStubPromise.bind(this);
+        this.getCustomerPromise = <CustomerPromiseFunction>this.getCustomerPromise.bind(this);
         this._prevFn = prevFn;
         this._nextFn = nextFn;
     }
@@ -43,7 +45,7 @@ export class Connector<
         });
     }
 
-    public getCustomerPromise = <CustomerPromiseFunction>((...args: Parameters<PrevFunction>) => {
+    public getCustomerPromise = <CustomerPromiseFunction>(function (this: Connector<PrevFunction, NextFunction, CustomerPromiseFunction>, ...args: Parameters<PrevFunction>) {
         return new Promise<CustomerPromiseResolveResult<PromiseFunctionGenericType<NextFunction>>>((resolve, reject) => {
             const getCustomerPromise = () => this.getCustomerPromise(...args);
 
