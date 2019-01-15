@@ -1,6 +1,6 @@
+import { FunctionParameterAt } from '@teronis/ts-definitions';
 import { TaskRouteError } from "./TaskRouteError";
-import { nameof } from "@teronis/ts-definitions";
-import { Connector } from "./Connector";
+import { Connector, CustomerPromiseResolveResult } from "./Connector";
 import { URIComponents } from "./URIComponents";
 import { serialize } from "uri-js";
 
@@ -19,15 +19,31 @@ export interface HttpPostRequestOptions extends HttpRequestOptions {
     postData?: any
 }
 
+export function isHttpPostRequestOptions(options: HttpRequestOptions): options is HttpPostRequestOptions {
+    return options.httpMethod === "POST";
+}
+
+export interface IRequestPromise {
+    (options: HttpRequestOptions | HttpPostRequestOptions): Promise<XMLHttpRequest>;
+}
+
+export interface IDeJsonResponseObjectPromise {
+    (request: XMLHttpRequest): Promise<any>;
+}
+
+export interface IDeJsonResponseObjectConnectorPromise {
+    (options: FunctionParameterAt<IRequestPromise, 0>): ReturnType<IDeJsonResponseObjectPromise>
+}
+
 export class HttpClient {
-    public getDeJsonResponseObjectConnector: Connector<typeof HttpClient.getRequestPromise, typeof HttpClient.getDeJsonResponseObjectPromise>;
+    public getDeJsonResponseObjectConnector: Connector<IRequestPromise, IDeJsonResponseObjectPromise, IDeJsonResponseObjectConnectorPromise>;
 
     public constructor() {
-        this.getDeJsonResponseObjectConnector = new Connector(HttpClient.getRequestPromise, HttpClient.getDeJsonResponseObjectPromise);
+        this.getDeJsonResponseObjectConnector = new Connector(this.getRequestPromise, this.getDeJsonResponseObjectPromise);
     }
 
-    public static getRequestPromise = function (options: HttpRequestOptions | HttpPostRequestOptions) {
-        return new Promise<XMLHttpRequest>((resolve, reject) => {
+    public getRequestPromise = <IRequestPromise>((options) => {
+        return new Promise((resolve, reject) => {
             const request = new XMLHttpRequest();
             const { timeout = 0 } = options;
             let uri: string;
@@ -47,23 +63,28 @@ export class HttpClient {
                 resolve(request);
             };
 
-            request.onerror = () => reject(new TaskRouteError("NetworkError"));
-            request.ontimeout = () => reject(new TaskRouteError("TimeoutError"));
+            request.onerror = () => { reject(new TaskRouteError("NetworkError")); };
+            request.ontimeout = () => { reject(new TaskRouteError("TimeoutError")); };
             // after open and before send
             request.timeout = timeout;
 
             if (options.beforeRequestTransmission)
                 options.beforeRequestTransmission(request);
 
-            if (nameof<HttpPostRequestOptions>("postData") in options) {
-                request.send((options as HttpPostRequestOptions).postData);
+            if (isHttpPostRequestOptions(options)) {
+                request.send(options.postData);
             } else {
                 request.send();
             }
         });
-    }
+    });
 
-    public static getDeJsonResponseObjectPromise(request: XMLHttpRequest) {
+    /**
+     * 
+     * @param request 
+     * @throws {SyntaxError}
+     */
+    public getDeJsonResponseObjectPromise = <IDeJsonResponseObjectPromise>((request) => {
         return Promise.resolve(JSON.parse(request.responseText));
-    }
+    });
 }

@@ -1,28 +1,42 @@
-import { PromiseFunctionRestArray, GetPromiseFunctionGenericType, PromiseFunction1Return, PromiseFunctionRestArrayReturn } from "@teronis/ts-definitions";
+import { RestArrayPromiseFunction, PromiseFunctionGenericType as PromiseFunctionGenericType, T1TResultPromiseFunction, TResultFunction } from "@teronis/ts-definitions";
 
-export interface ConnectorResolvedPromiseFunction<PlainInvokeResultType> {
-    getWrappedPromise: () => Promise<ConnectorResolvedPromiseFunction<PlainInvokeResultType>>,
-    result: PlainInvokeResultType
-};
+export interface CustomerPromiseResolveResult<TResolveResult> {
+    getCustomerPromise: () => Promise<CustomerPromiseResolveResult<TResolveResult>>,
+    result: TResolveResult
+}
 
-export interface ConnectorRejectedPromiseFunction<PlainInvokeResultType> {
-    getWrappedPromise: () => Promise<ConnectorResolvedPromiseFunction<PlainInvokeResultType>>,
+export interface CustomerPromiseRejectResult<TResolveResult> {
+    getCustomerPromise: () => Promise<CustomerPromiseResolveResult<TResolveResult>>,
     error: Error
-};
+}
 
-export class Connector<PrevResultFunction extends PromiseFunctionRestArray,
-    NextResultFunction extends PromiseFunction1Return<GetPromiseFunctionGenericType<PrevResultFunction>, GetPromiseFunctionGenericType<NextResultFunction>>> {
-    private _prevFn: PrevResultFunction;
-    private _nextFn: NextResultFunction;
+export type CustomerPromiseFunctionResult<TResult> = Promise<CustomerPromiseResolveResult<TResult>>;
 
-    public constructor(prevFn: PrevResultFunction, nextFn: NextResultFunction) {
-        this.getStubPromise = this.getStubPromise.bind(this);
+export class Connector<
+    PrevFunction extends RestArrayPromiseFunction,
+    NextFunction extends T1TResultPromiseFunction<PromiseFunctionGenericType<PrevFunction>, ConnectorResult>,
+    CustomerPromiseFunction extends TResultFunction<PrevFunction, CustomerPromiseFunctionResult<ConnectorResult>> = TResultFunction<PrevFunction, CustomerPromiseFunctionResult<ConnectorResult>>,
+    ConnectorParameters extends Parameters<PrevFunction> = Parameters<PrevFunction>,
+    ConnectorResult extends PromiseFunctionGenericType<NextFunction> = PromiseFunctionGenericType<NextFunction>
+    > {
+    private _prevFn: PrevFunction;
+    private _nextFn: NextFunction;
+
+    public constructor(prevFn: PrevFunction, nextFn: NextFunction) {
         this._prevFn = prevFn;
         this._nextFn = nextFn;
     }
 
-    public getStubPromise(...args: Parameters<PrevResultFunction>) {
-        return new Promise<GetPromiseFunctionGenericType<NextResultFunction>>((resolve) => {
+    public replacePrevFn(prevFn: PrevFunction) {
+        this._prevFn = prevFn;
+    }
+
+    public replaceNextFn(nextFn: NextFunction) {
+        this._nextFn = nextFn;
+    }
+
+    public getStubPromise(...args: ConnectorParameters) {
+        return new Promise<ConnectorResult>((resolve) => {
             this._prevFn(...args)
                 .then((result) => {
                     this._nextFn(result)
@@ -33,19 +47,19 @@ export class Connector<PrevResultFunction extends PromiseFunctionRestArray,
         });
     }
 
-    public getCustomerPromise(...args: Parameters<PrevResultFunction>) {
-        return new Promise<ConnectorResolvedPromiseFunction<GetPromiseFunctionGenericType<NextResultFunction>>>((resolve, reject) => {
+    public getCustomerPromise = <CustomerPromiseFunction>((...args: ConnectorParameters) => {
+        return new Promise<CustomerPromiseResolveResult<ConnectorResult>>((resolve, reject) => {
             const getWrappedPromise = () => this.getCustomerPromise(...args);
 
             this.getStubPromise(...args)
                 .then((result) => resolve({
-                    getWrappedPromise,
+                    getCustomerPromise: getWrappedPromise,
                     result
                 }))
                 .catch((error) => reject({
-                    getWrappedPromise,
+                    getCustomerPromise: getWrappedPromise,
                     error
-                } as ConnectorRejectedPromiseFunction<GetPromiseFunctionGenericType<NextResultFunction>>));
+                } as CustomerPromiseRejectResult<ConnectorResult>));
         });
-    }
+    });
 }

@@ -1,6 +1,6 @@
 {
   "name": "@teronis/ts-client",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Abstract classes for clients.",
   "private": false,
   "publishConfig": {
@@ -33,7 +33,7 @@
     "@babel/core": "^7.2.2",
     "@babel/preset-env": "^7.2.3",
     "@babel/preset-typescript": "^7.1.0",
-    "@teronis/ts-definitions": "^0.4.0",
+    "@teronis/ts-definitions": "^0.6.1",
     "@teronis/webpack-dts-bundle": "^1.0.2-teronified",
     "awesome-typescript-loader": "^5.2.1",
     "babel-loader": "^8.0.5",
@@ -48,8 +48,7 @@
     "uri-js": "^4.2.2",
     "webpack": "^4.28.4",
     "webpack-cli": "^3.2.1",
-    "webpack-node-externals": "^1.7.2",
-    "xmlhttprequest-ts": "^1.0.1"
+    "webpack-node-externals": "^1.7.2"
   },
   "dependencies": {
     "@teronis/ts-core": "~0.4.0",
