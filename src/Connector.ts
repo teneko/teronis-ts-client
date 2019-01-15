@@ -48,14 +48,18 @@ export class Connector<
             const getCustomerPromise = () => this.getCustomerPromise(...args);
 
             this.getStubPromise(...args)
-                .then((result) => resolve({
-                    getCustomerPromise: getCustomerPromise,
-                    result
-                }))
-                .catch((error) => reject({
-                    getCustomerPromise: getCustomerPromise,
-                    error
-                } as CustomerPromiseRejectResult<PromiseFunctionGenericType<NextFunction>>));
+                .then((result) => {
+                    resolve({
+                        getCustomerPromise: getCustomerPromise,
+                        result
+                    });
+                })
+                .catch((error) => {
+                    reject({
+                        getCustomerPromise: getCustomerPromise,
+                        error
+                    } as CustomerPromiseRejectResult<PromiseFunctionGenericType<NextFunction>>)
+                });
         });
     });
 }
