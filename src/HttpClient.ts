@@ -80,8 +80,7 @@ export class HttpClient {
 
             request.onerror = () => { reject(new TaskRouteError("NetworkError")); };
             request.ontimeout = () => { reject(new TaskRouteError("TimeoutError")); };
-            // after open and before send
-            request.timeout = timeout;
+            request.timeout = timeout; // after open and before send
 
             if (options.beforeRequestTransmission)
                 options.beforeRequestTransmission(request);
@@ -91,6 +90,9 @@ export class HttpClient {
             } else {
                 request.send();
             }
+        }).catch((error) => {
+            console.log("getRequestPromise");
+            return error;
         });
     }
 

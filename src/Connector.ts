@@ -19,10 +19,10 @@ export class Connector<
     private _nextFn: NextFunction;
 
     public constructor(prevFn: PrevFunction, nextFn: NextFunction) {
-        this.getStubPromise = this.getStubPromise.bind(this);
-        this.getCustomerPromise = <CustomerPromiseFunction>this.getCustomerPromise.bind(this);
         this._prevFn = prevFn;
         this._nextFn = nextFn;
+        this.getStubPromise = this.getStubPromise.bind(this);
+        this.getCustomerPromise = <CustomerPromiseFunction>this.getCustomerPromise.bind(this);
     }
 
     public replacePrevFn(prevFn: PrevFunction) {
@@ -34,22 +34,25 @@ export class Connector<
     }
 
     public getStubPromise(...args: Parameters<PrevFunction>) {
-        return new Promise<PromiseFunctionGenericType<NextFunction>>((resolve) => {
-            this._prevFn(...args)
+        return new Promise<PromiseFunctionGenericType<NextFunction>>((resolve, reject) => {
+            return this._prevFn(...args)
                 .then((result) => {
-                    this._nextFn(result)
-                        .then((result) => {
-                            resolve(result);
-                        });
+                    return this._nextFn(result)
+                        .then((result) => { resolve(result); });
+                }).catch((error) => {
+                    console.log("getStubPromise");
+                    throw error;
                 });
         });
     }
 
-    public getCustomerPromise = <CustomerPromiseFunction>(function (this: Connector<PrevFunction, NextFunction, CustomerPromiseFunction>, ...args: Parameters<PrevFunction>) {
+    public getCustomerPromise = <CustomerPromiseFunction>((...args: Parameters<PrevFunction>) => {
         return new Promise<CustomerPromiseResolveResult<PromiseFunctionGenericType<NextFunction>>>((resolve, reject) => {
-            const getCustomerPromise = () => this.getCustomerPromise(...args);
+            const getCustomerPromise = () => {
+                return this.getCustomerPromise(...args);
+            };
 
-            this.getStubPromise(...args)
+            return this.getStubPromise(...args)
                 .then((result) => {
                     resolve({
                         getCustomerPromise: getCustomerPromise,
@@ -57,6 +60,7 @@ export class Connector<
                     });
                 })
                 .catch((error) => {
+                    console.log("getCustomerPromise");
                     reject({
                         getCustomerPromise: getCustomerPromise,
                         error

@@ -1,6 +1,6 @@
 {
   "name": "@teronis/ts-client",
-  "version": "0.6.0",
+  "version": "0.6.4",
   "description": "Abstract classes for clients.",
   "private": false,
   "publishConfig": {
