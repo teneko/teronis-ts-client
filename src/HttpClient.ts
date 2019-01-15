@@ -1,8 +1,23 @@
 import { FunctionParameterAt, PromiseFunctionGenericType } from '@teronis/ts-definitions';
 import { TaskRouteError } from "./TaskRouteError";
-import { Connector, CustomerPromiseResolveResult } from "./Connector";
-import { IURIComponents } from "./IURIComponents";
+import { Connector } from "./Connector";
 import { serialize } from "uri-js";
+
+export interface IURIComponents {
+    scheme?: string;
+    userinfo?: string;
+    host?: string;
+    port?: number | string;
+    path?: string;
+    query?: string;
+    fragment?: string;
+    reference?: string;
+    error?: string;
+}
+
+export function isStringUri(uri: string | IURIComponents): uri is string {
+    return typeof uri === "string";
+}
 
 export interface HttpRequestOptions {
     httpMethod: string
@@ -12,10 +27,6 @@ export interface HttpRequestOptions {
     beforeRequestTransmission?: (request: XMLHttpRequest) => void
     // isDryRun: boolean
     logAfterTransmission?: boolean
-}
-
-export function isStringUri(uri: string | IURIComponents): uri is string {
-    return typeof uri === "string";
 }
 
 export interface HttpPostRequestOptions extends HttpRequestOptions {
