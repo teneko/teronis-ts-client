@@ -1,6 +1,6 @@
 import { FunctionParameterAt, PromiseFunctionGenericType } from '@teronis/ts-definitions';
 import { TaskRouteError } from "./TaskRouteError";
-import { Connector } from "./Connector";
+import { Connector, CustomerPromiseFunctionResultFromPromiseFunction } from "./Connector";
 import { serialize } from "uri-js";
 
 export interface IURIComponents {
@@ -20,18 +20,18 @@ export function isStringUri(uri: string | IURIComponents): uri is string {
 }
 
 export interface HttpRequestOptions {
-    httpMethod: string
-    uri: string | IURIComponents
+    httpMethod: string;
+    uri: string | IURIComponents;
     // In milliseconds.
-    timeout?: number
-    beforeRequestTransmission?: (request: XMLHttpRequest) => void
+    timeout?: number;
+    beforeRequestTransmission?: (request: XMLHttpRequest) => void;
     // isDryRun: boolean
-    logAfterTransmission?: boolean
+    logAfterTransmission?: boolean;
 }
 
 export interface HttpPostRequestOptions extends HttpRequestOptions {
-    httpMethod: "POST"
-    postData?: any
+    httpMethod: "POST";
+    postData?: any;
 }
 
 export function isHttpPostRequestOptions(options: HttpRequestOptions): options is HttpPostRequestOptions {
@@ -47,7 +47,7 @@ export interface IDeJsonResponseObjectPromise {
 }
 
 export interface IDeJsonResponseObjectConnectorPromise {
-    (options: FunctionParameterAt<IRequestPromise, 0>): ReturnType<IDeJsonResponseObjectPromise>
+    (options: FunctionParameterAt<IRequestPromise, 0>): CustomerPromiseFunctionResultFromPromiseFunction<IDeJsonResponseObjectPromise>;
 }
 
 export class HttpClient {

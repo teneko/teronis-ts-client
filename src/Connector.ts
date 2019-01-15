@@ -1,4 +1,4 @@
-import { RestArrayPromiseFunction, PromiseFunctionGenericType as PromiseFunctionGenericType, T1TResultPromiseFunction, TResultFunction } from "@teronis/ts-definitions";
+import { RestArrayPromiseFunction, PromiseFunctionGenericType, T1TResultPromiseFunction, TResultFunction } from "@teronis/ts-definitions";
 
 export interface CustomerPromiseResolveResult<TResolveResult> {
     getCustomerPromise: () => Promise<CustomerPromiseResolveResult<TResolveResult>>,
@@ -10,12 +10,14 @@ export interface CustomerPromiseRejectResult<TResolveResult> {
     error: Error
 }
 
-export type CustomerPromiseFunctionResult<TResult> = Promise<CustomerPromiseResolveResult<TResult>>;
+type CustomerPromiseFunctionResultFromConnectorResult<TResult> = Promise<CustomerPromiseResolveResult<TResult>>;
+
+export type CustomerPromiseFunctionResultFromPromiseFunction<F extends RestArrayPromiseFunction> = Promise<CustomerPromiseResolveResult<PromiseFunctionGenericType<F>>>;
 
 export class Connector<
     PrevFunction extends RestArrayPromiseFunction,
     NextFunction extends T1TResultPromiseFunction<PromiseFunctionGenericType<PrevFunction>, ConnectorResult>,
-    CustomerPromiseFunction extends TResultFunction<PrevFunction, CustomerPromiseFunctionResult<ConnectorResult>> = TResultFunction<PrevFunction, CustomerPromiseFunctionResult<ConnectorResult>>,
+    CustomerPromiseFunction extends TResultFunction<PrevFunction, CustomerPromiseFunctionResultFromConnectorResult<ConnectorResult>> = TResultFunction<PrevFunction, CustomerPromiseFunctionResultFromConnectorResult<ConnectorResult>>,
     ConnectorParameters extends Parameters<PrevFunction> = Parameters<PrevFunction>,
     ConnectorResult extends PromiseFunctionGenericType<NextFunction> = PromiseFunctionGenericType<NextFunction>
     > {
@@ -49,15 +51,15 @@ export class Connector<
 
     public getCustomerPromise = <CustomerPromiseFunction>((...args: ConnectorParameters) => {
         return new Promise<CustomerPromiseResolveResult<ConnectorResult>>((resolve, reject) => {
-            const getWrappedPromise = () => this.getCustomerPromise(...args);
+            const getCustomerPromise = () => this.getCustomerPromise(...args);
 
             this.getStubPromise(...args)
                 .then((result) => resolve({
-                    getCustomerPromise: getWrappedPromise,
+                    getCustomerPromise: getCustomerPromise,
                     result
                 }))
                 .catch((error) => reject({
-                    getCustomerPromise: getWrappedPromise,
+                    getCustomerPromise: getCustomerPromise,
                     error
                 } as CustomerPromiseRejectResult<ConnectorResult>));
         });
