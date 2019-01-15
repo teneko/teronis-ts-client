@@ -10,16 +10,12 @@ export interface CustomerPromiseRejectResult<TResolveResult> {
     error: Error
 }
 
-type CustomerPromiseFunctionResultFromConnectorResult<TResult> = Promise<CustomerPromiseResolveResult<TResult>>;
-
 export type CustomerPromiseFunctionResultFromPromiseFunction<F extends RestArrayPromiseFunction> = Promise<CustomerPromiseResolveResult<PromiseFunctionGenericType<F>>>;
 
 export class Connector<
     PrevFunction extends RestArrayPromiseFunction,
-    NextFunction extends T1TResultPromiseFunction<PromiseFunctionGenericType<PrevFunction>, ConnectorResult>,
-    CustomerPromiseFunction extends TResultFunction<PrevFunction, CustomerPromiseFunctionResultFromConnectorResult<ConnectorResult>> = TResultFunction<PrevFunction, CustomerPromiseFunctionResultFromConnectorResult<ConnectorResult>>,
-    ConnectorParameters extends Parameters<PrevFunction> = Parameters<PrevFunction>,
-    ConnectorResult extends PromiseFunctionGenericType<NextFunction> = PromiseFunctionGenericType<NextFunction>
+    NextFunction extends T1TResultPromiseFunction<PromiseFunctionGenericType<PrevFunction>, PromiseFunctionGenericType<NextFunction>>,
+    CustomerPromiseFunction extends TResultFunction<PrevFunction, Promise<CustomerPromiseResolveResult<PromiseFunctionGenericType<NextFunction>>>> = TResultFunction<PrevFunction, Promise<CustomerPromiseResolveResult<PromiseFunctionGenericType<NextFunction>>>>,
     > {
     private _prevFn: PrevFunction;
     private _nextFn: NextFunction;
@@ -37,8 +33,8 @@ export class Connector<
         this._nextFn = nextFn;
     }
 
-    public getStubPromise(...args: ConnectorParameters) {
-        return new Promise<ConnectorResult>((resolve) => {
+    public getStubPromise(...args: Parameters<PrevFunction>) {
+        return new Promise<PromiseFunctionGenericType<NextFunction>>((resolve) => {
             this._prevFn(...args)
                 .then((result) => {
                     this._nextFn(result)
@@ -49,8 +45,8 @@ export class Connector<
         });
     }
 
-    public getCustomerPromise = <CustomerPromiseFunction>((...args: ConnectorParameters) => {
-        return new Promise<CustomerPromiseResolveResult<ConnectorResult>>((resolve, reject) => {
+    public getCustomerPromise = <CustomerPromiseFunction>((...args: Parameters<PrevFunction>) => {
+        return new Promise<CustomerPromiseResolveResult<PromiseFunctionGenericType<NextFunction>>>((resolve, reject) => {
             const getCustomerPromise = () => this.getCustomerPromise(...args);
 
             this.getStubPromise(...args)
@@ -61,7 +57,7 @@ export class Connector<
                 .catch((error) => reject({
                     getCustomerPromise: getCustomerPromise,
                     error
-                } as CustomerPromiseRejectResult<ConnectorResult>));
+                } as CustomerPromiseRejectResult<PromiseFunctionGenericType<NextFunction>>));
         });
     });
 }
