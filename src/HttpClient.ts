@@ -1,17 +1,21 @@
-import { FunctionParameterAt } from '@teronis/ts-definitions';
+import { FunctionParameterAt, PromiseFunctionGenericType } from '@teronis/ts-definitions';
 import { TaskRouteError } from "./TaskRouteError";
 import { Connector, CustomerPromiseResolveResult } from "./Connector";
-import { URIComponents } from "./URIComponents";
+import { IURIComponents } from "./IURIComponents";
 import { serialize } from "uri-js";
 
 export interface HttpRequestOptions {
     httpMethod: string
-    uri: string | URIComponents
+    uri: string | IURIComponents
     // In milliseconds.
     timeout?: number
     beforeRequestTransmission?: (request: XMLHttpRequest) => void
     // isDryRun: boolean
     logAfterTransmission?: boolean
+}
+
+export function isStringUri(uri: string | IURIComponents): uri is string {
+    return typeof uri === "string";
 }
 
 export interface HttpPostRequestOptions extends HttpRequestOptions {
@@ -42,16 +46,16 @@ export class HttpClient {
         this.getDeJsonResponseObjectConnector = new Connector(this.getRequestPromise, this.getDeJsonResponseObjectPromise);
     }
 
-    public getRequestPromise = <IRequestPromise>((options) => {
-        return new Promise((resolve, reject) => {
+    public getRequestPromise(options: FunctionParameterAt<IRequestPromise, 0>) {
+        return new Promise<PromiseFunctionGenericType<IRequestPromise>>((resolve, reject) => {
             const request = new XMLHttpRequest();
             const { timeout = 0 } = options;
             let uri: string;
 
-            if (options.uri instanceof URIComponents) {
-                uri = serialize(options.uri);
-            } else {
+            if (isStringUri(options.uri)) {
                 uri = options.uri;
+            } else {
+                uri = serialize(options.uri);
             }
 
             request.open(options.httpMethod, uri, true);
@@ -77,14 +81,14 @@ export class HttpClient {
                 request.send();
             }
         });
-    });
+    }
 
     /**
      * 
      * @param request 
      * @throws {SyntaxError}
      */
-    public getDeJsonResponseObjectPromise = <IDeJsonResponseObjectPromise>((request) => {
+    public getDeJsonResponseObjectPromise(request: FunctionParameterAt<IDeJsonResponseObjectPromise, 0>) {
         return Promise.resolve(JSON.parse(request.responseText));
-    });
+    }
 }

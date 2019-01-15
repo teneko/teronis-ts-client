@@ -1,4 +1,4 @@
-export class URIComponents {
+export interface IURIComponents {
     scheme?: string;
     userinfo?: string;
     host?: string;
