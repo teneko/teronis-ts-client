@@ -1,6 +1,6 @@
 import { FunctionParameterAt, PromiseFunctionGenericType } from '@teronis/ts-definitions';
 import { TaskRouteError } from "./TaskRouteError";
-import { Connector, CustomerPromiseFunctionResultFromPromiseFunction } from "./Connector";
+import { Connector, CustomerPromiseFunctionResultFromPromiseFunction, CustomerPromiseFunctionResultFromConnectorPromiseFunction } from "./Connector";
 import { serialize } from "uri-js";
 
 export interface IURIComponents {

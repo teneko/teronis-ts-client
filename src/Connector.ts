@@ -10,8 +10,6 @@ export interface CustomerPromiseRejectResult<TResolveResult> {
     error: Error
 }
 
-export type CustomerPromiseFunctionResultFromPromiseFunction<F extends RestArrayPromiseFunction> = Promise<CustomerPromiseResolveResult<PromiseFunctionGenericType<F>>>;
-
 export class Connector<
     PrevFunction extends RestArrayPromiseFunction,
     NextFunction extends T1TResultPromiseFunction<PromiseFunctionGenericType<PrevFunction>, PromiseFunctionGenericType<NextFunction>>,
@@ -61,3 +59,7 @@ export class Connector<
         });
     });
 }
+
+export type CustomerPromiseFunctionResultFromPromiseFunction<F extends RestArrayPromiseFunction> = Promise<CustomerPromiseResolveResult<PromiseFunctionGenericType<F>>>;
+
+export type CustomerPromiseFunctionResultFromConnectorPromiseFunction<F extends RestArrayPromiseFunction> = F extends (...args: any[]) => Promise<CustomerPromiseResolveResult<infer T>> ? Promise<CustomerPromiseResolveResult<T>> : never;
