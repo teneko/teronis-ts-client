@@ -1,14 +1,14 @@
-import { RestArrayPromiseFunction, PromiseFunctionGenericType, T1TResultPromiseFunction, TResultFunction } from "@teronis/ts-definitions";
+import { RestArrayToPromiseFn, PromiseResultFromFn, ParamToPromiseResultFn, FunctionResultUnion, RestArrayFn } from "@teronis/ts-definitions";
 import { ExtendableError } from "@teronis/ts-core";
 
-export interface CustomerPromiseResolveResult<TResolveResult> {
-    recall: () => Promise<CustomerPromiseResolveResult<TResolveResult>>,
-    result: TResolveResult
+export interface CustomerPromiseResolveResult<ResolveResult> {
+    recall: () => Promise<CustomerPromiseResolveResult<ResolveResult>>,
+    result: ResolveResult
 }
 
 export class CustomerPromiseError<
-    TResolveResult,
-    CustomerPromiseFunction = () => Promise<CustomerPromiseResolveResult<TResolveResult>>
+    ResolveResult,
+    CustomerPromiseFunction = () => Promise<CustomerPromiseResolveResult<ResolveResult>>
     > extends ExtendableError {
     public error: Error;
     public recall: CustomerPromiseFunction;
@@ -20,30 +20,45 @@ export class CustomerPromiseError<
     }
 }
 
+export function isCustomPromiseError<T>(error: Error): error is CustomerPromiseError<T> {
+    const typedError = (<CustomerPromiseError<T>>error);
+
+    return typedError instanceof Error &&
+        typedError.error instanceof Error &&
+        typeof typedError.recall === "function";
+}
+
 export class Connector<
-    PrevFunction extends RestArrayPromiseFunction,
-    NextFunction extends T1TResultPromiseFunction<PromiseFunctionGenericType<PrevFunction>, PromiseFunctionGenericType<NextFunction>>,
-    CustomerPromiseFunction extends TResultFunction<PrevFunction, Promise<CustomerPromiseResolveResult<PromiseFunctionGenericType<NextFunction>>>> = TResultFunction<PrevFunction, Promise<CustomerPromiseResolveResult<PromiseFunctionGenericType<NextFunction>>>>
+    PrevFunction extends RestArrayToPromiseFn,
+    NextFunction extends ParamToPromiseResultFn<PromiseResultFromFn<PrevFunction>, PromiseResultFromFn<NextFunction>>,
+    CustomerPromiseFunction extends FunctionResultUnion<PrevFunction, Promise<CustomerPromiseResolveResult<PromiseResultFromFn<NextFunction>>>> = FunctionResultUnion<PrevFunction, Promise<CustomerPromiseResolveResult<PromiseResultFromFn<NextFunction>>>>
     > {
-    private _prevFn: PrevFunction;
-    private _nextFn: NextFunction;
+    private prevFn: PrevFunction;
+    private nextFn: NextFunction;
 
     public constructor(prevFn: PrevFunction, nextFn: NextFunction) {
-        this._prevFn = prevFn;
-        this._nextFn = nextFn;
+        this.prevFn = prevFn;
+        this.nextFn = nextFn;
         this.getStubPromise = this.getStubPromise.bind(this);
     }
 
     public replacePrevFn(prevFn: PrevFunction) {
-        this._prevFn = prevFn;
+        this.prevFn = prevFn;
     }
 
     public replaceNextFn(nextFn: NextFunction) {
-        this._nextFn = nextFn;
+        this.nextFn = nextFn;
     }
 
     public getStubPromise(...args: Parameters<PrevFunction>) {
-        return this._prevFn(...args).then((result) => this._nextFn(result));
+        return this.prevFn(...args).then((result) => {
+            console.log("prev result", result);
+            const nextPromise = this.nextFn(result);
+            return nextPromise;
+        }).then(result => {
+            console.log("next result", result);
+            return result;
+        });
     }
 
     public getCustomerPromise = <CustomerPromiseFunction>((...args: Parameters<PrevFunction>) => {
@@ -55,13 +70,18 @@ export class Connector<
             .then((result) => ({
                 result,
                 recall,
-            } as CustomerPromiseResolveResult<PromiseFunctionGenericType<NextFunction>>))
+            } as CustomerPromiseResolveResult<PromiseResultFromFn<NextFunction>>))
             .catch((error) => {
-                throw new CustomerPromiseError<PromiseFunctionGenericType<NextFunction>>(error, recall);
+                throw new CustomerPromiseError<PromiseResultFromFn<NextFunction>>(error, recall);
             });
     });
+
+    public getRetriableCustomerPromise(retry: (error: CustomerPromiseError<PromiseResultFromFn<NextFunction>>) => Promise<CustomerPromiseResolveResult<PromiseResultFromFn<NextFunction>>>, ...args: Parameters<PrevFunction>) {
+        return this.getCustomerPromise(...args)
+            .catch((error) => retry(error));
+    }
 }
 
-export type CustomerPromiseFunctionResultFromPromiseFunction<F extends RestArrayPromiseFunction> = Promise<CustomerPromiseResolveResult<PromiseFunctionGenericType<F>>>;
+export type CustomerPromiseFunctionResultFromPromiseFunction<F extends RestArrayToPromiseFn> = Promise<CustomerPromiseResolveResult<PromiseResultFromFn<F>>>;
 
-export type CustomerPromiseFunctionResultFromConnectorPromiseFunction<F extends RestArrayPromiseFunction> = F extends (...args: any[]) => Promise<CustomerPromiseResolveResult<infer T>> ? Promise<CustomerPromiseResolveResult<T>> : never;
+export type CustomerPromiseFunctionResultFromConnectorPromiseFunction<F extends (...args: any[]) => Promise<CustomerPromiseResolveResult<any>>> = F extends (...args: any[]) => Promise<CustomerPromiseResolveResult<infer T>> ? Promise<CustomerPromiseResolveResult<T>> : never;

@@ -1,0 +1,8 @@
+{
+	"isLinked": null,
+	"links": [
+		"@teronis/ts-definitions",
+		"@teronis/ts-core",
+		"@teronis/ts-auto-bind-es6"
+	]
+}

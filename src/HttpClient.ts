@@ -1,7 +1,8 @@
-import { FunctionParameterAt, PromiseFunctionGenericType } from '@teronis/ts-definitions';
+import { FnParamAt } from '@teronis/ts-definitions';
 import { ReasonError } from "./ReasonError";
 import { Connector, CustomerPromiseFunctionResultFromPromiseFunction, CustomerPromiseFunctionResultFromConnectorPromiseFunction } from "./Connector";
 import { serialize } from "uri-js";
+import { autoBind, getMethodNames } from "@teronis/ts-auto-bind-es6";
 
 export interface IURIComponents {
     scheme?: string;
@@ -34,31 +35,23 @@ export interface HttpPostRequestOptions extends HttpRequestOptions {
     postData?: any;
 }
 
+export type SomeHttpRequestOptions = HttpRequestOptions | HttpPostRequestOptions;
+
 export function isHttpPostRequestOptions(options: HttpRequestOptions): options is HttpPostRequestOptions {
     return options.httpMethod === "POST";
 }
 
-export interface IRequestPromise {
-    (options: HttpRequestOptions | HttpPostRequestOptions): Promise<XMLHttpRequest>;
-}
+export type RequestPromise = typeof HttpClient.requestPromise;
 
-export interface IDeJsonResponseObjectPromise {
-    (request: XMLHttpRequest): Promise<any>;
-}
+export type DeJsonResponsePromise = typeof HttpClient.deJsonResponsePromise;
 
-export interface IDeJsonResponseObjectConnectorPromise {
-    (options: FunctionParameterAt<IRequestPromise, 0>): CustomerPromiseFunctionResultFromPromiseFunction<IDeJsonResponseObjectPromise>;
+export interface IDeJsonResponseConnectorPromise {
+    (options: FnParamAt<RequestPromise, 0>): CustomerPromiseFunctionResultFromPromiseFunction<DeJsonResponsePromise>;
 }
 
 export class HttpClient {
-    public getDeJsonResponseObjectConnector: Connector<IRequestPromise, IDeJsonResponseObjectPromise, IDeJsonResponseObjectConnectorPromise>;
-
-    public constructor() {
-        this.getDeJsonResponseObjectConnector = new Connector(this.getRequestPromise, this.getDeJsonResponseObjectPromise);
-    }
-
-    public getRequestPromise(options: FunctionParameterAt<IRequestPromise, 0>) {
-        return new Promise<PromiseFunctionGenericType<IRequestPromise>>((resolve, reject) => {
+    public static requestPromise(options: SomeHttpRequestOptions) {
+        return new Promise<XMLHttpRequest>((resolve, reject) => {
             const request = new XMLHttpRequest();
             const { timeout = 0 } = options;
             let uri: string;
@@ -98,7 +91,22 @@ export class HttpClient {
      * @param request 
      * @throws {SyntaxError}
      */
-    public getDeJsonResponseObjectPromise(request: FunctionParameterAt<IDeJsonResponseObjectPromise, 0>) {
+    public static deJsonResponsePromise(request: XMLHttpRequest) {
         return Promise.resolve(JSON.parse(request.responseText));
+    }
+
+    public deJsonResponseConnector: Connector<RequestPromise, DeJsonResponsePromise, IDeJsonResponseConnectorPromise>;
+
+    public constructor() {
+        autoBind(this, getMethodNames(Object.create(HttpClient.prototype)));
+        this.deJsonResponseConnector = new Connector(this.requestPromise, this.deJsonResponsePromise);
+    }
+
+    protected requestPromise(options: FnParamAt<RequestPromise, 0>) {
+        return HttpClient.requestPromise(options);
+    }
+
+    protected deJsonResponsePromise(request: FnParamAt<DeJsonResponsePromise, 0>) {
+        return HttpClient.deJsonResponsePromise(request);
     }
 }

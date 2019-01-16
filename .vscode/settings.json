@@ -1,0 +1,9 @@
+{
+    "window.zoomLevel": -1,
+    "explorer.confirmDelete": false,
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "editor.autoClosingQuotes": "never",
+    "editor.autoClosingBrackets": "never",
+    "editor.autoSurround": "never",
+    "explorer.confirmDragAndDrop": false
+}
