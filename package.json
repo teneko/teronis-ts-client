@@ -1,6 +1,6 @@
 {
   "name": "@teronis/ts-client",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "Abstract classes for clients.",
   "private": false,
   "publishConfig": {
@@ -51,7 +51,6 @@
     "webpack-node-externals": "^1.7.2"
   },
   "dependencies": {
-    "@teronis/ts-core": "~0.4.0",
     "jquery": "^3.3.1",
     "lodash": "^4.17.11",
     "sweetalert2": "^7.33.1"

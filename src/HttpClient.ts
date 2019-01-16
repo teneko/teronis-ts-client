@@ -1,5 +1,5 @@
 import { FunctionParameterAt, PromiseFunctionGenericType } from '@teronis/ts-definitions';
-import { TaskRouteError } from "./TaskRouteError";
+import { ReasonError } from "./ReasonError";
 import { Connector, CustomerPromiseFunctionResultFromPromiseFunction, CustomerPromiseFunctionResultFromConnectorPromiseFunction } from "./Connector";
 import { serialize } from "uri-js";
 
@@ -78,8 +78,8 @@ export class HttpClient {
                 resolve(request);
             };
 
-            request.onerror = () => { reject(new TaskRouteError("NetworkError")); };
-            request.ontimeout = () => { reject(new TaskRouteError("TimeoutError")); };
+            request.onerror = () => { reject(new ReasonError("NetworkError")); };
+            request.ontimeout = () => { reject(new ReasonError("TimeoutError")); };
             request.timeout = timeout; // after open and before send
 
             if (options.beforeRequestTransmission)
@@ -90,9 +90,6 @@ export class HttpClient {
             } else {
                 request.send();
             }
-        }).catch((error) => {
-            console.log("getRequestPromise");
-            return error;
         });
     }
 
