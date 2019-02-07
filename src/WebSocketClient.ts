@@ -1,6 +1,6 @@
 import { ReasonError } from "./ReasonError";
 import { getURIString, IURIComponents } from "./uri";
-import { createDeferredPromise, IDeferredPromise } from "@teronis/ts-core";
+import { DeferredPromise } from "@teronis/ts-core";
 
 export interface IWebSocketRequestOptions {
     uri: string | IURIComponents;
@@ -59,7 +59,7 @@ export class WebSocketClient {
                 const { timeout = 0 } = options;
                 const uri = getURIString(options.uri);
                 const webSocket = new WebSocket(uri, options.protocols);
-                const onCloseDeferredPromise = createDeferredPromise<CloseEvent>();
+                const onCloseDeferredPromise = new DeferredPromise<CloseEvent>();
 
                 // Double assignment for late check in possible timeout handler
                 const onCloseHandler = (e: CloseEvent) => {
