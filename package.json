@@ -1,11 +1,7 @@
 {
   "name": "@teronis/ts-client",
   "version": "0.7.0",
-  "description": "Abstract classes for clients.",
-  "private": false,
-  "publishConfig": {
-    "access": "public"
-  },
+  "description": "Abstract classes for usual types of clients that can be easily extended.",
   "main": "dist/teronis-ts-client.js",
   "source": "src/index.ts",
   "types": "dist/teronis-ts-client.d.ts",
@@ -20,11 +16,13 @@
   },
   "keywords": [
     "teronis",
+    "typescript",
+    "abstract",
     "client",
     "request"
   ],
   "author": "teroneko",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/teroneko/teronis-ts-client/issues"
   },
