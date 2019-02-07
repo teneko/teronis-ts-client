@@ -1,6 +1,6 @@
 {
   "name": "@teronis/ts-client",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Abstract classes for usual types of clients that can be easily extended.",
   "main": "dist/teronis-ts-client.js",
   "source": "src/index.ts",
@@ -46,9 +46,12 @@
     "uri-js": "^4.2.2",
     "webpack": "^4.29.0",
     "webpack-cli": "^3.2.1",
-    "webpack-node-externals": "^1.7.2"
+    "webpack-node-externals": "^1.7.2",
+    "@teronis/ts-core": "~0.4.2",
+    "@teronis/ts-auto-bind-es6": "~0.0.1"
   },
-  "dependencies": {
-    "@teronis/ts-core": "^0.4.2"
+  "peerDependencies": {
+    "@teronis/ts-core": "~0.4.2",
+    "@teronis/ts-auto-bind-es6": "~0.0.1"
   }
 }
