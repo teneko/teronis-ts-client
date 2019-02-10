@@ -26,6 +26,12 @@ export function isHttpPostRequestOptions(options: IHttpRequestOptions): options 
 }
 
 export type RequestPromise = typeof HttpClient.requestPromise;
+
+export type DeJsonReponseReturnType = {
+    request: XMLHttpRequest,
+    deJsonObject: any
+}
+
 export type DeJsonResponsePromise = typeof HttpClient.deJsonResponsePromise;
 export type DeJsonResponseConnectorPromise = typeof HttpClient.prototype.deJsonResponseConnector.getStubPromise;
 
@@ -68,8 +74,13 @@ export class HttpClient {
      * @param request 
      * @throws {SyntaxError}
      */
-    public static deJsonResponsePromise(request: XMLHttpRequest) {
-        return JSON.parse(request.responseText);
+    public static deJsonResponsePromise(request: XMLHttpRequest): Promise<DeJsonReponseReturnType> {
+        const deJsonObject = JSON.parse(request.responseText);
+
+        return Promise.resolve({
+            request,
+            deJsonObject
+        });
     }
 
     // @ts-ignore: Intentionally unused

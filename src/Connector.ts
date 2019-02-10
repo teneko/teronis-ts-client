@@ -8,12 +8,12 @@ export interface CustomerPromiseResolveResult<ResolveResult> {
 
 export class CustomerPromiseError<
     ResolveResult,
-    CustomerPromiseFunction = () => Promise<CustomerPromiseResolveResult<ResolveResult>>
+    _CustomerPromiseFunction = () => Promise<CustomerPromiseResolveResult<ResolveResult>>
     > extends ExtendableError {
     public error: Error;
-    public recall: CustomerPromiseFunction;
+    public recall: _CustomerPromiseFunction;
 
-    public constructor(error: Error, recall: CustomerPromiseFunction) {
+    public constructor(error: Error, recall: _CustomerPromiseFunction) {
         super(error);
         this.error = error;
         this.recall = recall;
@@ -32,56 +32,53 @@ export class Connector<
     PrevFn extends RestArrayFn,
     NextFn extends ParamTypeToReturnTypeFn<PromiseResolveTypeFromFn<PromisifyFn<PrevFn>>, ReturnType<NextFn>>,
     CustomerPromiseFn extends FunctionResultUnion<PrevFn, Promise<CustomerPromiseResolveResult<PromiseResolveTypeOrType<ReturnType<NextFn>>>>> = FunctionResultUnion<PrevFn, Promise<CustomerPromiseResolveResult<PromiseResolveTypeOrType<ReturnType<NextFn>>>>>,
-    PromisifiedPrevFn extends PromisifyFn<PrevFn> = PromisifyFn<PrevFn>,
-    ReturnTypeFromFnAsPromise extends PromiseResolveTypeOrType<ReturnType<NextFn>> = PromiseResolveTypeOrType<ReturnType<NextFn>>,
-    PromisifiedNextFn extends ParamTypeToReturnTypeFn<PromiseResolveTypeFromFn<PromisifyFn<PrevFn>>, ReturnTypeFromFnAsPromise> = ParamTypeToReturnTypeFn<PromiseResolveTypeFromFn<PromisifyFn<PrevFn>>, ReturnTypeFromFnAsPromise>
+    _PromisifiedPrevFn extends PromisifyFn<PrevFn> = PromisifyFn<PrevFn>,
+    _PromisifiedReturnTypeFromNextFn extends PromiseResolveTypeOrType<ReturnType<NextFn>> = PromiseResolveTypeOrType<ReturnType<NextFn>>,
+    _PromisifiedNextFn extends ParamTypeToReturnTypeFn<PromiseResolveTypeFromFn<PromisifyFn<PrevFn>>, _PromisifiedReturnTypeFromNextFn> = ParamTypeToReturnTypeFn<PromiseResolveTypeFromFn<PromisifyFn<PrevFn>>, _PromisifiedReturnTypeFromNextFn>
     > {
     private static promisifyFn(fn: Function) {
         return (...args: any[]) => Promise.resolve(fn(...args));
     }
 
-    private prevFn: PromisifiedPrevFn;
-    private nextFn: PromisifiedNextFn;
+    private prevFn: _PromisifiedPrevFn;
+    private nextFn: _PromisifiedNextFn;
 
     public constructor(prevFn: PrevFn, nextFn: NextFn) {
-        this.prevFn = <PromisifiedPrevFn>Connector.promisifyFn(prevFn);
-        this.nextFn = <PromisifiedNextFn>Connector.promisifyFn(nextFn);
-        this.getStubPromise = this.getStubPromise.bind(this);
+        this.prevFn = <_PromisifiedPrevFn>Connector.promisifyFn(prevFn);
+        this.nextFn = <_PromisifiedNextFn>Connector.promisifyFn(nextFn);
     }
 
     public replacePrevFn(prevFn: PrevFn) {
-        this.prevFn = <PromisifiedPrevFn>Connector.promisifyFn(prevFn);
+        this.prevFn = <_PromisifiedPrevFn>Connector.promisifyFn(prevFn);
     }
 
     public replaceNextFn(nextFn: NextFn) {
-        this.nextFn = <PromisifiedNextFn>Connector.promisifyFn(nextFn);
+        this.nextFn = <_PromisifiedNextFn>Connector.promisifyFn(nextFn);
     }
 
-    public getStubPromise(...args: Parameters<PromisifiedPrevFn>) {
+    public getStubPromise = (...args: Parameters<_PromisifiedPrevFn>) => {
         return this.prevFn(...args).then((result) => this.nextFn(result));
     }
 
-    public getCustomerPromise = <CustomerPromiseFn>((...args: Parameters<PromisifiedPrevFn>) => {
+    public getCustomerPromise = <CustomerPromiseFn>((...args: Parameters<_PromisifiedPrevFn>) => {
         const recall = () => {
             return this.getCustomerPromise(...args);
         };
-
+ 
         return this.getStubPromise(...args)
             .then((result) => ({
                 result,
                 recall,
-            } as CustomerPromiseResolveResult<ReturnTypeFromFnAsPromise>))
+            } as CustomerPromiseResolveResult<_PromisifiedReturnTypeFromNextFn>))
             .catch((error) => {
-                throw new CustomerPromiseError<ReturnTypeFromFnAsPromise>(error, recall);
+                throw new CustomerPromiseError<PromiseResolveTypeOrType<ReturnType<NextFn>>>(error, recall);
             });
     });
 
-    public getRetriableCustomerPromise = (retry: (error: CustomerPromiseError<ReturnTypeFromFnAsPromise>) => Promise<CustomerPromiseResolveResult<ReturnTypeFromFnAsPromise>>, ...args: Parameters<PromisifiedPrevFn>) => {
+    public getRetriableCustomerPromise = (retry: (error: CustomerPromiseError<_PromisifiedReturnTypeFromNextFn>) => Promise<CustomerPromiseResolveResult<_PromisifiedReturnTypeFromNextFn>>, ...args: Parameters<_PromisifiedPrevFn>) => {
         return this.getCustomerPromise(...args)
             .catch((error) => retry(error));
     }
 }
 
-export type CustomerPromiseFunctionResultFromPromiseFunction<F extends RestArrayToPromiseFn> = Promise<CustomerPromiseResolveResult<PromiseResolveTypeFromFn<F>>>;
-
-export type CustomerPromiseFunctionResultFromConnectorPromiseFunction<F extends (...args: any[]) => Promise<CustomerPromiseResolveResult<any>>> = F extends (...args: any[]) => Promise<CustomerPromiseResolveResult<infer T>> ? Promise<CustomerPromiseResolveResult<T>> : never;
+export type PromiseResolveTypeFromGetCustomerPromiseFn<F extends (...args: any[]) => Promise<CustomerPromiseResolveResult<any>>> = F extends (...args: any[]) => Promise<CustomerPromiseResolveResult<infer T>> ? CustomerPromiseResolveResult<T> : never;
