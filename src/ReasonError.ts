@@ -12,7 +12,7 @@ export class ReasonError extends ExtendableError {
 }
 
 export function isReasonError(error: Error): error is ReasonError {
-    const typedError = <ReasonError>error;
+    const typedError = error as ReasonError;
 
     return typedError instanceof Error &&
         typeof typedError.reason === "string" &&

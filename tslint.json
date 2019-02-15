@@ -1,0 +1,23 @@
+{
+    "extends": "tslint:recommended",
+    "rulesDirectory": [
+        "src/"
+    ],
+    "rules": {
+        "member-ordering": false,
+        "max-line-length": false,
+        "variable-name": [
+            false
+        ],
+        "ordered-imports": true,
+        "align": false,
+        "interface-over-type-literal": false,
+        "no-consecutive-blank-lines": [
+            true,
+            2
+        ],
+        "object-literal-sort-keys": false,
+        "no-console": false
+    },
+    "jsRules": {}
+}
