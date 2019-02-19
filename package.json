@@ -32,12 +32,11 @@
     "src"
   ],
   "devDependencies": {
-    "@babel/core": "^7.2.2",
-    "@babel/preset-env": "^7.2.3",
-    "@babel/preset-typescript": "^7.1.0",
-    "@teronis/ts-auto-bind-es6": "~0.0.1",
+    "@babel/core": "^7.3.3",
+    "@babel/preset-env": "^7.3.1",
+    "@babel/preset-typescript": "^7.3.3",
     "@teronis/ts-core": "~0.5.3",
-    "@teronis/ts-definitions": "~0.7.2",
+    "@teronis/ts-definitions": "~0.7.3",
     "@teronis/webpack-dts-bundle": "^1.0.2-teronified",
     "babel-loader": "^8.0.5",
     "chai": "^4.2.0",
@@ -48,12 +47,16 @@
     "ts-loader": "^5.3.3",
     "ts-node": "^7.0.1",
     "tslint": "^5.12.1",
-    "typescript": "^3.2.4",
-    "uri-js": "^4.2.2",
-    "webpack": "^4.29.0",
-    "webpack-cli": "^3.2.1"
+    "typescript": "^3.3.3",
+    "webpack": "^4.29.5",
+    "webpack-cli": "^3.2.3"
   },
   "peerDependencies": {
-    "@teronis/ts-core": "~0.5.3"
+    "@teronis/ts-core": "~0.5.3",
+    "@teronis/ts-definitions": "~0.7.3"
+  },
+  "dependencies": {
+    "@teronis/ts-auto-bind-es6": "0.0.2",
+    "uri-js": "^4.2.2"
   }
 }
