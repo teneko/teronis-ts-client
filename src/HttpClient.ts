@@ -1,5 +1,5 @@
 import { autoBind, getMethodNames } from "@teronis/ts-auto-bind-es6";
-import { FnParamAt } from "@teronis/ts-definitions";
+import { FnParamAt, PromiseResolveTypeFromReturnType } from "@teronis/ts-definitions";
 import { Connector } from "./Connector";
 import { ReasonError } from "./ReasonError";
 import { getURIString, IURIComponents } from "./uri";
@@ -37,7 +37,7 @@ export interface IDeJsonResponsePromiseResolveType extends IRequestPromiseResolv
 }
 
 export type DeJsonResponsePromise = typeof HttpClient.deJsonResponsePromise;
-export type DeJsonResponseConnectorPromise = typeof HttpClient.prototype.deJsonResponseConnector.getStubPromise;
+export type DeJsonResponseConnectorPromise = typeof HttpClient.prototype.deJsonResponseConnector.passThrough;
 
 export class HttpClient {
     public static ERROR_MESSAGE_NETWORK = "NetworkError";
