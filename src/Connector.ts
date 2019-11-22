@@ -35,13 +35,46 @@ export class Connector<
         return wrappedFn;
     }
 
-    private static wrapWithConnectorFactoryAndFnReplacer<Fn extends RestArrayWithAnyPromiseResultFunction>(fn: Fn, replace: (fn: Fn) => void) {
-        const connectorFactoryWrappedFn = this.wrapWithConnectorFactory(fn);
-        const wrappedFn = connectorFactoryWrappedFn as typeof connectorFactoryWrappedFn & { replace: typeof replace };
+    private static wrapAsReplacable<Fn extends RestArrayWithAnyPromiseResultFunction, ReplaceFn extends (fn: Fn) => any>(fn: Fn, replace: ReplaceFn) {
+        const wrappedFn = fn as Fn & { replace: typeof replace };
+
         /** This function replaces the contextual function with the passed function. */
         wrappedFn.replace = replace;
+
         return wrappedFn;
     }
+
+    private static wrapAsRecallable<
+        Fn extends RestArrayWithAnyPromiseResultFunction,
+        _PromiseResolveTypeFromFn extends PromiseResolveTypeFromReturnType<Fn> = PromiseResolveTypeFromReturnType<Fn>,
+        _AsRecallable extends FnParamsWithResultFunction<Fn, Promise<ICustomerPromiseResolveResult<_PromiseResolveTypeFromFn>>> = FnParamsWithResultFunction<Fn, Promise<ICustomerPromiseResolveResult<_PromiseResolveTypeFromFn>>>
+    >(fn: Fn) {
+        const asRecallable = ((...args: Parameters<Fn>) => {
+            const recall = () => {
+                return asRecallable(...args);
+            };
+
+            return fn(args)
+                .then((result) => ({
+                    result,
+                    recall,
+                } as ICustomerPromiseResolveResult<_PromiseResolveTypeFromFn>))
+                .catch((error) => {
+                    throw new CustomerPromiseError<_PromiseResolveTypeFromFn>(error, recall);
+                });
+        }) as _AsRecallable;
+
+        const wrappedFn = fn as Fn & { asRecallable: _AsRecallable };
+        /** This function replaces the contextual function with the function that has been passed. */
+        wrappedFn.asRecallable = asRecallable;
+        return wrappedFn;
+    }
+
+    // public static wrapAsRetriable<Fn extends RestArrayWithAnyPromiseResultFunction, ErrorType>(fn: Fn) {
+    //     const asRetriable = (retry: (error: CustomerPromiseError<_PromiseResolveTypeFromReturnTypeFromNextFn>) => Promise<ICustomerPromiseResolveResult<_PromiseResolveTypeFromReturnTypeFromNextFn>>, ...args: Parameters<Fn>)=> {
+
+    //     };
+    // }
 
     private _prevFn: PrevFn;
     private _nextFn: NextFn;
@@ -52,18 +85,30 @@ export class Connector<
     }
 
     public get prevFn() {
-        return Connector.wrapWithConnectorFactoryAndFnReplacer(this._prevFn, (prevFn: PrevFn) => this._prevFn = prevFn);
+        const prevFn = this._prevFn;
+        const wrappedAsReplacable = Connector.wrapAsReplacable(prevFn, (fn: PrevFn) => this as Connector<PrevFn, NextFn, _ReturnTypeFromNextFn, _PromiseResolveTypeFromReturnTypeFromNextFn, _PassThrough, _PassThroughWrapper>);
+        const wrappedWithConnectorFactory = Connector.wrapWithConnectorFactory(prevFn);
+        return prevFn as typeof wrappedAsReplacable & typeof wrappedWithConnectorFactory;
     }
 
     public get nextFn() {
-        return Connector.wrapWithConnectorFactoryAndFnReplacer(this._nextFn, (nextFn: NextFn) => this._nextFn = nextFn);
+        const nextFn = this._nextFn;
+        const wrappedAsReplacable = Connector.wrapAsReplacable(nextFn, (fn: NextFn) => this as Connector<PrevFn, NextFn, _ReturnTypeFromNextFn, _PromiseResolveTypeFromReturnTypeFromNextFn, _PassThrough, _PassThroughWrapper>);
+        const wrappedWithConnectorFactory = Connector.wrapWithConnectorFactory(nextFn);
+        return nextFn as typeof wrappedAsReplacable & typeof wrappedWithConnectorFactory;
     }
 
-    public passThrough = Connector.wrapWithConnectorFactory((async (...args: Parameters<PrevFn>) => {
-        const prevFnResult = await this._prevFn(...args);
-        const nextFnResult = await this._nextFn(prevFnResult);
-        return nextFnResult as ReturnType<NextFn>;
-    }) as _PassThrough);
+    public passThrough = (() => {
+        const passThrough = (async (...args: Parameters<PrevFn>) => {
+            const prevFnResult = await this._prevFn(...args);
+            const nextFnResult = await this._nextFn(prevFnResult);
+            return nextFnResult as ReturnType<NextFn>;
+        }) as _PassThrough;
+
+        const wrappedWithConnectorFactory = Connector.wrapWithConnectorFactory(passThrough);
+        const wrappedWithFnRecaller = Connector.wrapAsRecallable(passThrough);
+        return passThrough as typeof wrappedWithConnectorFactory & typeof wrappedWithFnRecaller;
+    })();
 
     public get connectorFactory() {
         return this.passThrough.connectorFactory;
@@ -73,25 +118,10 @@ export class Connector<
         return this.passThrough.reverseConnectorFactory;
     }
 
-    public passThroughWrapped = ((...args: Parameters<PrevFn>) => {
-        const recall = () => {
-            return this.passThroughWrapped(...args);
-        };
-
-        return this.passThrough(...args)
-            .then((result) => ({
-                result,
-                recall,
-            } as ICustomerPromiseResolveResult<_PromiseResolveTypeFromReturnTypeFromNextFn>))
-            .catch((error) => {
-                throw new CustomerPromiseError<_PromiseResolveTypeFromReturnTypeFromNextFn>(error, recall);
-            });
-    }) as _PassThroughWrapper;
-
-    public getRetriableCustomerPromise = (retry: (error: CustomerPromiseError<_PromiseResolveTypeFromReturnTypeFromNextFn>) => Promise<ICustomerPromiseResolveResult<_PromiseResolveTypeFromReturnTypeFromNextFn>>, ...args: Parameters<PrevFn>) => {
-        return this.passThroughWrapped(...args)
-            .catch((error) => retry(error));
-    }
+    // public getRetriableCustomerPromise = (retry: (error: CustomerPromiseError<_PromiseResolveTypeFromReturnTypeFromNextFn>) => Promise<ICustomerPromiseResolveResult<_PromiseResolveTypeFromReturnTypeFromNextFn>>, ...args: Parameters<PrevFn>) => {
+    //     return this.passThrough.asRecallable(...args)
+    //         .catch((error) => retry(error));
+    // }
 }
 
 function promisifyFn(fn: RestArrayFunction) {
