@@ -26,19 +26,19 @@ export interface IRequestResult {
     request: XMLHttpRequest;
 }
 
-export type CreateRequestPromiseFunction = typeof HttpClient.createRequestPromise;
+export type CreateRequestPromiseFunction = typeof HttpClient.createRequestAsync;
 
 export interface IDeserializedJsonResult extends IRequestResult {
     deserializedJsonObject: any;
 }
 
-export type DeserializeJsonResponseFunction = typeof HttpClient.deserializeJsonResponse;
+export type DeserializeJsonResponseFunction = typeof HttpClient.deserializeJsonRequestResult;
 
 export class HttpClient {
     public static ERROR_MESSAGE_NETWORK = "NetworkError";
     public static ERROR_MESSAGE_TIMEOUT = "TimeoutError";
 
-    public static createRequestPromise(options: HttpRequestOptions): Promise<IRequestResult> {
+    public static createRequestAsync(options: HttpRequestOptions): Promise<IRequestResult> {
         const uri = getURIString(options.uri);
 
         const beVerbose = <T>(result: T, isErrorenous: boolean) => {
@@ -90,7 +90,7 @@ export class HttpClient {
      * @param result
      * @throws {SyntaxError}
      */
-    public static deserializeJsonResponse(result: IRequestResult): IDeserializedJsonResult {
+    public static deserializeJsonRequestResult(result: IRequestResult): IDeserializedJsonResult {
         const deJsonObject = JSON.parse(result.request.responseText);
 
         if (result.options.verbose) {
@@ -103,5 +103,5 @@ export class HttpClient {
         };
     }
 
-    public deserializeJsonRequestResultConnector = createConnectorFactory(HttpClient.createRequestPromise).createConnector.promisifyFn(HttpClient.deserializeJsonResponse);
+    public deserializeJsonRequestResultConnector = createConnectorFactory(HttpClient.createRequestAsync).createConnector.promisifyFn(HttpClient.deserializeJsonRequestResult);
 }
