@@ -1,5 +1,7 @@
 const path = require('path');
-const DtsBundlePlugin = require("@teronis/webpack-dts-bundle");
+// const DtsBundlePlugin = require("@teronis/webpack-dts-bundle");
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const TsConfigPathsPlugin = require("tsconfig-paths-webpack-plugin");
 const PackageFile = require("./package.json");
 
 module.exports = {
@@ -31,15 +33,19 @@ module.exports = {
       "node_modules",
     ],
     extensions: ["js", ".ts", ".tsx", "d.ts"],
+    plugins: [new TsConfigPathsPlugin()]
   },
-  plugins: [new DtsBundlePlugin({
-    name: PackageFile.name,
-    main: PackageFile.source,
-    // prevents deleting <baseDir>/**/*.d.ts outside of <baseDir>
-    baseDir: path.dirname(PackageFile.source),
-    // absolute path to prevent the join of <baseDir> and <out>
-    out: path.resolve(__dirname, PackageFile.types),
-    removeSource: true,
-    outputAsModuleFolder: true
-  })]
+  plugins: [
+    new CleanWebpackPlugin()
+    //   new DtsBundlePlugin({
+    //   name: ".",
+    //   main: PackageFile.source,
+    //   // prevents deleting <baseDir>/**/*.d.ts outside of <baseDir>
+    //   baseDir: path.dirname(PackageFile.source),
+    //   // absolute path to prevent the join of <baseDir> and <out>
+    //   out: path.resolve(__dirname, PackageFile.types),
+    //   removeSource: true,
+    //   outputAsModuleFolder: false
+    // })
+  ]
 };

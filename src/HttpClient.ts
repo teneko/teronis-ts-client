@@ -1,7 +1,4 @@
-import { autoBind, getMethodNames } from "@teronis/ts-auto-bind-es6";
-import { createConnectorFactory } from "./Connector";
-import { ReasonError } from "./ReasonError";
-import { getURIString, IURIComponents } from "./uri";
+import { createConnectorFactory, getURIString, IURIComponents, ReasonError } from "./";
 
 export interface IHttpNonPostRequestOptions {
     httpMethod: string;
@@ -106,8 +103,5 @@ export class HttpClient {
         };
     }
 
-    // @ts-ignore: Intentionally unused
-    /** We bind each function (not arrow) to this */
-    private autoBind = autoBind(this, getMethodNames(Object.create(HttpClient.prototype)));
     public deserializeJsonRequestResultConnector = createConnectorFactory(HttpClient.createRequestPromise).createConnector.promisifyFn(HttpClient.deserializeJsonResponse);
 }

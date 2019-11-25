@@ -3,19 +3,22 @@
         "sourceMap": true,
         "target": "es6",
         "declaration": true,
-        "baseUrl": ".",
         "moduleResolution": "node",
         "strictNullChecks": true,
         "allowSyntheticDefaultImports": true,
+        "baseUrl": ".",
+        "declarationDir": "./dist",
         "strict": true,
         "typeRoots": [
             /* added due to bug, because 'npm link' don't install dependencies (ex. @types/jquery) */
             "node_modules/@types",
             "node_modules/@teronis/ts-core/node_modules/@types"
         ],
-        // "experimentalDecorators": true
+        // "paths": {
+        //     "test": ["./src"]
+        // },
     },
-    "include": [
-        "src/**/*"
-    ]
+    // "include": [
+    //     "src/**/*"
+    // ]
 }
