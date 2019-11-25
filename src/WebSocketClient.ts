@@ -43,7 +43,7 @@ export class WebSocketClient {
     public static ERROR_MESSAGE_UNEXPECTED_CLOSE = "UnexpectedCloseError";
     public static ERROR_MESSAGE_TIMEOUT = "TimeoutError";
 
-    public static requestPromise(options: IWebSocketStaticRequestOptions) {
+    public static createRequestAsync(options: IWebSocketStaticRequestOptions) {
         return new Promise<IWebSocketStaticRequestPromiseResolveType>((resolve, reject) => {
             if (!Object.prototype.hasOwnProperty.call(window, "WebSocket")) {
                 reject(new ReasonError(WebSocketClient.ERROR_MESSAGE_WEBSOCKET_SUPPORT));

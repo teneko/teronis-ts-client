@@ -1,6 +1,5 @@
 import { autoBind, getMethodNames } from "@teronis/ts-auto-bind-es6";
-import { FnParamAt, PromiseResolveTypeFromReturnType } from "@teronis/ts-definitions";
-import { Connector } from "./Connector";
+import { createConnectorFactory } from "./Connector";
 import { ReasonError } from "./ReasonError";
 import { getURIString, IURIComponents } from "./uri";
 
@@ -25,48 +24,46 @@ export function isHttpPostRequestOptions(options: IHttpNonPostRequestOptions): o
     return options.httpMethod === "POST";
 }
 
-export interface IRequestPromiseResolveType {
+export interface IRequestResult {
     options: HttpRequestOptions;
     request: XMLHttpRequest;
 }
 
-export type RequestPromise = typeof HttpClient.requestPromise;
+export type CreateRequestPromiseFunction = typeof HttpClient.createRequestPromise;
 
-export interface IDeJsonResponsePromiseResolveType extends IRequestPromiseResolveType {
-    deJsonObject: any;
+export interface IDeserializedJsonResult extends IRequestResult {
+    deserializedJsonObject: any;
 }
 
-export type DeJsonResponsePromise = typeof HttpClient.deJsonResponsePromise;
-export type DeJsonResponseConnectorPromise = typeof HttpClient.prototype.deJsonResponseConnector.passThrough;
+export type DeserializeJsonResponseFunction = typeof HttpClient.deserializeJsonResponse;
 
 export class HttpClient {
     public static ERROR_MESSAGE_NETWORK = "NetworkError";
     public static ERROR_MESSAGE_TIMEOUT = "TimeoutError";
 
-    public static requestPromise(options: HttpRequestOptions) {
+    public static createRequestPromise(options: HttpRequestOptions): Promise<IRequestResult> {
         const uri = getURIString(options.uri);
 
-        const beVerbose = (result: any) => {
+        const beVerbose = <T>(result: T, isErrorenous: boolean) => {
             if (options.verbose) {
-                const isError = result instanceof Error;
-
-                if (isError) {
+                if (isErrorenous) {
                     console.error("An error occured while tried to reach " + uri + ":\r\n%o", {
                         options,
                         result,
                     });
-
-                    throw result;
                 } else {
                     console.log("The page " + uri + " answered\r\n%O", result);
-                    return result;
                 }
             }
 
-            return result;
+            if (isErrorenous) {
+                throw result;
+            } else {
+                return result;
+            }
         };
 
-        return new Promise<IRequestPromiseResolveType>((resolve, reject) => {
+        return new Promise<IRequestResult>((resolve, reject) => {
             const { timeout = 0 } = options;
             const request = new XMLHttpRequest();
             const container = { options, request };
@@ -87,39 +84,30 @@ export class HttpClient {
                 request.send();
             }
         })
-            .then(beVerbose)
-            .catch(beVerbose);
+            .then((result) => beVerbose(result, false))
+            .catch((result) => beVerbose(result, true));
     }
 
     /**
-     *
-     * @param request
+     * This function deserializes the result of the response and returns it.
+     * @param result
      * @throws {SyntaxError}
      */
-    public static deJsonResponsePromise(result: IRequestPromiseResolveType): Promise<IDeJsonResponsePromiseResolveType> {
+    public static deserializeJsonResponse(result: IRequestResult): IDeserializedJsonResult {
         const deJsonObject = JSON.parse(result.request.responseText);
 
         if (result.options.verbose) {
             console.log("request response", deJsonObject);
         }
 
-        return Promise.resolve({
+        return {
             ...result,
-            deJsonObject,
-        });
+            deserializedJsonObject: deJsonObject,
+        };
     }
 
     // @ts-ignore: Intentionally unused
     /** We bind each function (not arrow) to this */
     private autoBind = autoBind(this, getMethodNames(Object.create(HttpClient.prototype)));
-
-    public deJsonResponseConnector = new Connector(this.requestPromise, this.deJsonResponsePromise);
-
-    protected requestPromise(options: FnParamAt<RequestPromise, 0>) {
-        return HttpClient.requestPromise(options);
-    }
-
-    protected deJsonResponsePromise(request: FnParamAt<DeJsonResponsePromise, 0>) {
-        return HttpClient.deJsonResponsePromise(request);
-    }
+    public deserializeJsonRequestResultConnector = createConnectorFactory(HttpClient.createRequestPromise).createConnector.promisifyFn(HttpClient.deserializeJsonResponse);
 }

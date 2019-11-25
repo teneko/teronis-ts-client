@@ -1,197 +1,188 @@
 import { FnParamAt, FnParamsWithResultFunction, ParamWithPromiseResultFunction, ParamWithResultFunction, PromiseResolveType, PromiseResolveTypeFromReturnType, RestArrayFunction, RestArrayWithAnyPromiseResultFunction, RestArrayWithPromiseResultFunction, RestArrayWithResultFunction } from "@teronis/ts-definitions";
-import { CustomerPromiseError } from "./CustomerPromiseError";
-import { ICustomerPromiseResolveResult } from "./projectTypes";
 
-export function isCustomPromiseError<T>(error: Error): error is CustomerPromiseError<T> {
-    const typedError = (error as CustomerPromiseError<T>);
+const createConnectorFnName = "createConnector";
+const promisifyFnName = "promisifyFn";
 
-    return typedError instanceof Error &&
-        typedError.error instanceof Error &&
-        typeof typedError.recall === "function";
+/** This helper function create a promisification of the passed function. */
+function promisifyFn<Fn extends RestArrayFunction>(fn: Fn) {
+    // No need to type the parameters.
+    return (...args: any[]) => Promise.resolve(fn(...args));
 }
+
+type FnReplacementParams<Fn extends RestArrayWithAnyPromiseResultFunction> = {
+    getFnReplacment: (originalFnAsync: Fn) => Fn;
+    getFnReplacmentPromisify: (originalFnAsync: Fn) => FnParamsWithResultFunction<Fn, PromiseResolveTypeFromReturnType<Fn>>;
+};
+
+type ParamTypeWithAnyResultFunction<ParamType> = ParamWithResultFunction<ParamType, any>;
 
 export type ParamTypeWithAnyPromiseResultFunction<ParamType> = ParamWithResultFunction<ParamType, Promise<any>>;
 export type AnyParamsWithPromiseResultFunction<TPromiseResolve> = ParamWithResultFunction<any[], Promise<TPromiseResolve>>;
 
 export class Connector<
-    PrevFn extends RestArrayWithAnyPromiseResultFunction,
-    NextFn extends ParamTypeWithAnyPromiseResultFunction<PromiseResolveTypeFromReturnType<PrevFn>> = ParamTypeWithAnyPromiseResultFunction<PromiseResolveTypeFromReturnType<PrevFn>>,
-    _ReturnTypeFromNextFn extends ReturnType<NextFn> = ReturnType<NextFn>,
+    PrevFnAsync extends RestArrayWithAnyPromiseResultFunction,
+    NextFnAsync extends ParamTypeWithAnyPromiseResultFunction<PromiseResolveTypeFromReturnType<PrevFnAsync>> = ParamTypeWithAnyPromiseResultFunction<PromiseResolveTypeFromReturnType<PrevFnAsync>>,
+    _ReturnTypeFromNextFn extends ReturnType<NextFnAsync> = ReturnType<NextFnAsync>,
     _PromiseResolveTypeFromReturnTypeFromNextFn = PromiseResolveType<_ReturnTypeFromNextFn>,
-    _PassThrough extends FnParamsWithResultFunction<PrevFn, Promise<PromiseResolveType<_ReturnTypeFromNextFn>>> = FnParamsWithResultFunction<PrevFn, Promise<PromiseResolveType<_ReturnTypeFromNextFn>>>,
-    _PassThroughWrapper extends FnParamsWithResultFunction<PrevFn, Promise<ICustomerPromiseResolveResult<PromiseResolveType<_ReturnTypeFromNextFn>>>> = FnParamsWithResultFunction<PrevFn, Promise<ICustomerPromiseResolveResult<PromiseResolveType<_ReturnTypeFromNextFn>>>>
+    _PassThroughAsync extends FnParamsWithResultFunction<PrevFnAsync, Promise<PromiseResolveType<_ReturnTypeFromNextFn>>> = FnParamsWithResultFunction<PrevFnAsync, Promise<PromiseResolveType<_ReturnTypeFromNextFn>>>,
     > {
-    private static wrapWithConnectorFactory<Fn extends RestArrayWithAnyPromiseResultFunction>(fn: Fn) {
-        const connectorFactory = createConnectorFactory(fn);
-        const reverseConnectorFactory = createReverseConnectorFactory(fn);
-
-        const wrappedFn = fn as Fn & { connectorFactory: typeof connectorFactory, reverseConnectorFactory: typeof reverseConnectorFactory };
-        /**
-         * That is the connector factory that needs a nextFn to create a Connector.
-         */
-        wrappedFn.connectorFactory = connectorFactory;
-        /** * That is the connector factory that needs a prevFn to create a Connector. */
-        wrappedFn.reverseConnectorFactory = reverseConnectorFactory;
-        return wrappedFn;
+    /** This factory function creates a connector with passed function you just passed. The necessary nextFn is created dynamically and will return the resolved result of prevFn. */
+    public static createDummy<PrevFnAsync extends RestArrayWithAnyPromiseResultFunction>(prevFnAsync: PrevFnAsync) {
+        const nextFnAsync = (result: PromiseResolveTypeFromReturnType<PrevFnAsync>) => Promise.resolve(result);
+        return new Connector(prevFnAsync, nextFnAsync);
     }
 
-    private static wrapAsReplacable<Fn extends RestArrayWithAnyPromiseResultFunction, ReplaceFn extends (fn: Fn) => any>(fn: Fn, replace: ReplaceFn) {
-        const wrappedFn = fn as Fn & { replace: typeof replace };
+    private static wrapWithConnectorFactory<FnAsync extends RestArrayWithAnyPromiseResultFunction>(fnAsync: FnAsync) {
+        const connectorFactory = createConnectorFactory(fnAsync);
+        const reverseConnectorFactory = createReverseConnectorFactory(fnAsync);
 
-        /** This function replaces the contextual function with the passed function. */
-        wrappedFn.replace = replace;
-
-        return wrappedFn;
+        return Object.assign(fnAsync, {
+            /** This is a pre-created connector factory. */
+            connectorFactory,
+            /** This is a pre-created reverse connector factory. */
+            reverseConnectorFactory,
+        });
     }
 
-    private static wrapAsRecallable<
+    private _prevFnAsync: PrevFnAsync;
+    private _nextFnAsync: NextFnAsync;
+
+    public constructor(prevFnAsync: PrevFnAsync, nextFnAsync: NextFnAsync) {
+        this._prevFnAsync = prevFnAsync;
+        this._nextFnAsync = nextFnAsync;
+    }
+
+    private createReplaceContainer = <
         Fn extends RestArrayWithAnyPromiseResultFunction,
-        _PromiseResolveTypeFromFn extends PromiseResolveTypeFromReturnType<Fn> = PromiseResolveTypeFromReturnType<Fn>,
-        _AsRecallable extends FnParamsWithResultFunction<Fn, Promise<ICustomerPromiseResolveResult<_PromiseResolveTypeFromFn>>> = FnParamsWithResultFunction<Fn, Promise<ICustomerPromiseResolveResult<_PromiseResolveTypeFromFn>>>
-    >(fn: Fn) {
-        const asRecallable = ((...args: Parameters<Fn>) => {
-            const recall = () => {
-                return asRecallable(...args);
-            };
+        >(fn: Fn, replaceFn: (fn: Fn) => void) => {
+        const replaceFnAndReturnSelf = (replacement: Fn) => {
+            replaceFn(replacement);
+            return this as Connector<PrevFnAsync, NextFnAsync, _ReturnTypeFromNextFn, _PromiseResolveTypeFromReturnTypeFromNextFn, _PassThroughAsync>;
+        };
 
-            return fn(args)
-                .then((result) => ({
-                    result,
-                    recall,
-                } as ICustomerPromiseResolveResult<_PromiseResolveTypeFromFn>))
-                .catch((error) => {
-                    throw new CustomerPromiseError<_PromiseResolveTypeFromFn>(error, recall);
-                });
-        }) as _AsRecallable;
-
-        const wrappedFn = fn as Fn & { asRecallable: _AsRecallable };
-        /** This function replaces the contextual function with the function that has been passed. */
-        wrappedFn.asRecallable = asRecallable;
-        return wrappedFn;
+        return {
+            /** This function replaces the original function (prevFn or nextFn) with the the resulting function of the function that has been passed. */
+            replaceFn: Object.assign((getFnReplacement: FnReplacementParams<Fn>["getFnReplacment"]) => {
+                const replacement = getFnReplacement(fn);
+                return replaceFnAndReturnSelf(replacement);
+            }, {
+                /** This function replaces the original function (prevFn or nextFn) with the the resulting, but promisified function of the function that has been passed. */
+                [promisifyFnName]: (getFnReplacement: FnReplacementParams<Fn>["getFnReplacmentPromisify"]) => {
+                    const nonPromiseFnReplacement = getFnReplacement(fn);
+                    const promisifiedFnReplacement = promisifyFn(nonPromiseFnReplacement) as Fn;
+                    return replaceFnAndReturnSelf(promisifiedFnReplacement);
+                },
+            }),
+        };
     }
 
-    // public static wrapAsRetriable<Fn extends RestArrayWithAnyPromiseResultFunction, ErrorType>(fn: Fn) {
-    //     const asRetriable = (retry: (error: CustomerPromiseError<_PromiseResolveTypeFromReturnTypeFromNextFn>) => Promise<ICustomerPromiseResolveResult<_PromiseResolveTypeFromReturnTypeFromNextFn>>, ...args: Parameters<Fn>)=> {
+    private replacePrevFn = (prevFnReplacemnt: PrevFnAsync) => this._prevFnAsync = prevFnReplacemnt;
 
-    //     };
-    // }
-
-    private _prevFn: PrevFn;
-    private _nextFn: NextFn;
-
-    public constructor(prevFn: PrevFn, nextFn: NextFn) {
-        this._prevFn = prevFn;
-        this._nextFn = nextFn;
+    public get prevFnAsync() {
+        const prevFnAsync = this._prevFnAsync;
+        const wrappedAsReplacable = Object.assign(prevFnAsync, this.createReplaceContainer(prevFnAsync, this.replacePrevFn));
+        // const wrappedWithConnectorFactory = Connector.wrapWithConnectorFactory(prevFn);
+        return prevFnAsync as typeof wrappedAsReplacable; // & typeof wrappedWithConnectorFactory);
     }
 
-    public get prevFn() {
-        const prevFn = this._prevFn;
-        const wrappedAsReplacable = Connector.wrapAsReplacable(prevFn, (fn: PrevFn) => this as Connector<PrevFn, NextFn, _ReturnTypeFromNextFn, _PromiseResolveTypeFromReturnTypeFromNextFn, _PassThrough, _PassThroughWrapper>);
-        const wrappedWithConnectorFactory = Connector.wrapWithConnectorFactory(prevFn);
-        return prevFn as typeof wrappedAsReplacable & typeof wrappedWithConnectorFactory;
+    private replaceNextFn = (nextFnReplacemnt: NextFnAsync) => this._nextFnAsync = nextFnReplacemnt;
+
+    public get nextFnAsync() {
+        const nextFnAsync = this._nextFnAsync;
+        const wrappedAsReplacable = Object.assign(nextFnAsync, this.createReplaceContainer(nextFnAsync, this.replaceNextFn));
+        // const wrappedWithConnectorFactory = Connector.wrapWithConnectorFactory(nextFn);
+        return nextFnAsync as typeof wrappedAsReplacable; // & typeof wrappedWithConnectorFactory;
     }
 
-    public get nextFn() {
-        const nextFn = this._nextFn;
-        const wrappedAsReplacable = Connector.wrapAsReplacable(nextFn, (fn: NextFn) => this as Connector<PrevFn, NextFn, _ReturnTypeFromNextFn, _PromiseResolveTypeFromReturnTypeFromNextFn, _PassThrough, _PassThroughWrapper>);
-        const wrappedWithConnectorFactory = Connector.wrapWithConnectorFactory(nextFn);
-        return nextFn as typeof wrappedAsReplacable & typeof wrappedWithConnectorFactory;
-    }
+    public passThroughAsync = (() => {
+        // This one can be hot replaced.
+        let replacablePassThroughAsync = (async (...args: Parameters<PrevFnAsync>) => {
+            const prevFnResult = await this._prevFnAsync(...args);
+            const nextFnResult = await this._nextFnAsync(prevFnResult);
+            return nextFnResult as ReturnType<NextFnAsync>;
+        }) as _PassThroughAsync;
 
-    public passThrough = (() => {
-        const passThrough = (async (...args: Parameters<PrevFn>) => {
-            const prevFnResult = await this._prevFn(...args);
-            const nextFnResult = await this._nextFn(prevFnResult);
-            return nextFnResult as ReturnType<NextFn>;
-        }) as _PassThrough;
+        function replacePassThroughAsync(passThroughAsync: _PassThroughAsync) {
+            replacablePassThroughAsync = passThroughAsync;
+        }
 
-        const wrappedWithConnectorFactory = Connector.wrapWithConnectorFactory(passThrough);
-        const wrappedWithFnRecaller = Connector.wrapAsRecallable(passThrough);
-        return passThrough as typeof wrappedWithConnectorFactory & typeof wrappedWithFnRecaller;
+        // This wrapper is calling the hot replacable function.
+        const passThroughAsyncWrapper = ((...args: Parameters<PrevFnAsync>) => replacablePassThroughAsync(...args)) as _PassThroughAsync;
+        const wrappedWithConnectorFactory = Connector.wrapWithConnectorFactory(passThroughAsyncWrapper);
+        // We pass replacablePassThroughAsync, because it is the original function we want to pass.
+        const wrappedAsReplacable = Object.assign(passThroughAsyncWrapper, this.createReplaceContainer(replacablePassThroughAsync, replacePassThroughAsync));
+        return passThroughAsyncWrapper as typeof wrappedWithConnectorFactory & typeof wrappedAsReplacable;
     })();
 
+    /** This is a pre-created connector factory. (See this.passThroughAsync.connectorFactory) */
     public get connectorFactory() {
-        return this.passThrough.connectorFactory;
+        return this.passThroughAsync.connectorFactory;
     }
 
+    /** This is a pre-created reverse connector factory. (See this.passThroughAsync.reverseConnectorFactory) */
     public get reverseConnectorFactory() {
-        return this.passThrough.reverseConnectorFactory;
+        return this.passThroughAsync.reverseConnectorFactory;
     }
-
-    // public getRetriableCustomerPromise = (retry: (error: CustomerPromiseError<_PromiseResolveTypeFromReturnTypeFromNextFn>) => Promise<ICustomerPromiseResolveResult<_PromiseResolveTypeFromReturnTypeFromNextFn>>, ...args: Parameters<PrevFn>) => {
-    //     return this.passThrough.asRecallable(...args)
-    //         .catch((error) => retry(error));
-    // }
-}
-
-function promisifyFn(fn: RestArrayFunction) {
-    // No need to type the parameters.
-    return (...args: any[]) => Promise.resolve(fn(...args));
 }
 
 /**
- * Pass prevFn to create a connector factory. The function prevFn must return a promise. You can call (nextFn) or promisify(nextFn) on the connector factory.
+ * Pass prevFn to create a connector factory. The function prevFn must return a promise.
  */
-export function createConnectorFactory<
+export const createConnectorFactory = Object.assign(<
     PrevFn extends RestArrayWithAnyPromiseResultFunction,
-    >(prevFn: PrevFn) {
-    /**
-     * Pass nextFn to create a connector. The function nextFn must return a promise.
-     */
-    const createConnector = <
-        NextFn extends ParamTypeWithAnyPromiseResultFunction<PromiseResolveTypeFromReturnType<PrevFn>>
-    >(nextFn: NextFn) => new Connector(prevFn, nextFn);
-
-    /**
-     * Pass nextFn to create a connector. The function nextFn will be transformed to (args) => Promise.resolve(nextFn(args)).
-     */
-    createConnector.promisify = <
-        NextFn extends ParamTypeWithAnyResultFunction<PromiseResolveTypeFromReturnType<PrevFn>>,
-        _PromisifiedNextFn extends ParamWithPromiseResultFunction<PromiseResolveTypeFromReturnType<PrevFn>, ReturnType<NextFn>>
-    >(nextFn: NextFn) => {
-        const promisifiedNextFn = promisifyFn(nextFn) as _PromisifiedNextFn;
-        return new Connector(prevFn, promisifiedNextFn);
+    >(prevFn: PrevFn) => {
+    return {
+        /** This factory function creates a connector with the function you passed before. The necessary nextFn is created dynamically and will return the resolved result of prevFn. */
+        createDummyConnector: () => Connector.createDummy(prevFn),
+        /** Pass nextFn to create a connector. The function nextFn must return a promise. */
+        [createConnectorFnName]: Object.assign(<
+            NextFn extends ParamTypeWithAnyPromiseResultFunction<PromiseResolveTypeFromReturnType<PrevFn>>
+        >(nextFn: NextFn) => {
+            return new Connector(prevFn, nextFn);
+        },
+            {
+                /** Pass nextFn to create a connector. The function nextFn will be transformed to (args) => Promise.resolve(nextFn(args)). */
+                [promisifyFnName]: <
+                    NextFn extends ParamTypeWithAnyResultFunction<PromiseResolveTypeFromReturnType<PrevFn>>,
+                    _PromisifiedNextFn extends ParamWithPromiseResultFunction<PromiseResolveTypeFromReturnType<PrevFn>, ReturnType<NextFn>>
+                >(nextFn: NextFn) => {
+                    const promisifiedNextFn = promisifyFn(nextFn) as _PromisifiedNextFn;
+                    return new Connector(prevFn, promisifiedNextFn);
+                },
+            }),
     };
-
-    return createConnector;
-}
-
-export type ParamTypeWithAnyResultFunction<ParamType> = ParamWithResultFunction<ParamType, any>;
-
-/**
- * Pass prevFn to create a connector factory. The function prevFn will be transformed to (args) => Promise.resolve(prevFn(args)). You can call (nextFn) or promisify(nextFn) on the connector factory.
- */
-createConnectorFactory.promisify = <
-    PrevFn extends RestArrayFunction,
-    _PromisifiedNextFn extends FnParamsWithResultFunction<PrevFn, Promise<ReturnType<PrevFn>>>
->(prevFn: PrevFn) => {
-    const promisifiedPrevFn = promisifyFn(prevFn) as _PromisifiedNextFn;
-    return createConnectorFactory(promisifiedPrevFn);
-};
+}, {
+    /**
+     * Pass prevFn to create a connector factory. The function prevFn will be transformed to (args) => Promise.resolve(prevFn(args)).
+     */
+    [promisifyFnName]: <
+        PrevFn extends RestArrayFunction,
+        _PromisifiedNextFn extends FnParamsWithResultFunction<PrevFn, Promise<ReturnType<PrevFn>>>
+    >(prevFn: PrevFn) => {
+        const promisifiedPrevFn = promisifyFn(prevFn) as _PromisifiedNextFn;
+        return createConnectorFactory(promisifiedPrevFn);
+    },
+});
 
 /**
- * Pass nextFn to create a reverse connector factory. The function nextFn must return a promise. You can call (prevFn) or promisify(prevFn) on the reverse connector factory.
+ * Pass nextFn to create a reverse connector factory. The function nextFn must return a promise.
  */
 export function createReverseConnectorFactory<
     NextFn extends RestArrayWithAnyPromiseResultFunction,
     >(nextFn: NextFn) {
-    /**
-     * Pass prevFn to create a connector. The function prevFn must return a promise.
-     */
-    const createConnector = <
-        PrevFn extends RestArrayWithPromiseResultFunction<FnParamAt<NextFn, 0>>
-    >(prevFn: PrevFn) => new Connector(prevFn, nextFn);
-
-    /**
-     * Pass prevFn to create a connector. The function prevFn will be transformed to (args) => Promise.resolve(prevFn(args)).
-     */
-    createConnector.promisify = <
-        PrevFn extends RestArrayWithResultFunction<FnParamAt<NextFn, 0>>,
-        _PromisifiedPrevFn extends FnParamsWithResultFunction<PrevFn, Promise<ReturnType<PrevFn>>>
-    >(prevFn: PrevFn) => {
-        const promisifiedPrevFn = promisifyFn(prevFn) as _PromisifiedPrevFn;
-        return new Connector(promisifiedPrevFn, nextFn);
+    return {
+        /** Pass prevFn to create a connector. The function prevFn will be transformed to (args) => Promise.resolve(prevFn(args)). */
+        [createConnectorFnName]: Object.assign(<
+            PrevFn extends RestArrayWithPromiseResultFunction<FnParamAt<NextFn, 0>>
+        >(prevFn: PrevFn) => new Connector(prevFn, nextFn), {
+            /** Pass prevFn to create a connector. The function prevFn must return a promise. */
+            [promisifyFnName]: <
+                PrevFn extends RestArrayWithResultFunction<FnParamAt<NextFn, 0>>,
+                _PromisifiedPrevFn extends FnParamsWithResultFunction<PrevFn, Promise<ReturnType<PrevFn>>>
+            >(prevFn: PrevFn) => {
+                const promisifiedPrevFn = promisifyFn(prevFn) as _PromisifiedPrevFn;
+                return new Connector(promisifiedPrevFn, nextFn);
+            },
+        }),
     };
-
-    return createConnector;
 }

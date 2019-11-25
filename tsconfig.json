@@ -6,12 +6,14 @@
         "baseUrl": ".",
         "moduleResolution": "node",
         "strictNullChecks": true,
+        "allowSyntheticDefaultImports": true,
         "strict": true,
         "typeRoots": [
             /* added due to bug, because 'npm link' don't install dependencies (ex. @types/jquery) */
             "node_modules/@types",
             "node_modules/@teronis/ts-core/node_modules/@types"
-        ]
+        ],
+        // "experimentalDecorators": true
     },
     "include": [
         "src/**/*"
