@@ -106,10 +106,10 @@ export class Connector<
             replacablePassThroughAsync = passThroughAsync;
         }
 
-        // This wrapper is calling the hot replacable function.
+        // This wraps the hot replacable function.
         const passThroughAsyncWrapper = ((...args: Parameters<PrevFnAsync>) => replacablePassThroughAsync(...args)) as _PassThroughAsync;
         const wrappedWithConnectorFactory = Connector.wrapWithConnectorFactory(passThroughAsyncWrapper);
-        // We pass replacablePassThroughAsync, because it is the original function we want to pass.
+        // We pass replacablePassThroughAsync, because that's the one that got replaced when called.
         const wrappedAsReplacable = Object.assign(passThroughAsyncWrapper, this.createReplaceContainer(replacablePassThroughAsync, replacePassThroughAsync));
         return passThroughAsyncWrapper as typeof wrappedWithConnectorFactory & typeof wrappedAsReplacable;
     })();
